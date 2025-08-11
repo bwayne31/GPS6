@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golf GPS - HadleyCreek</title>
+    <!-- Tailwind CSS for modern, mobile-first styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .disabled-btn {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex items-center justify-center min-h-screen p-4 transition-colors duration-300">
+    <div class="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl p-8 max-w-sm w-full mx-auto">
+        <!-- App Title and Course Info -->
+        <div class="text-center mb-6">
+            <h1 id="course-name" class="text-3xl font-extrabold text-gray-900 dark:text-white mb-2"></h1>
+            <p id="hole-info" class="text-lg text-gray-500 dark:text-gray-400 font-medium"></p>
+        </div>
+
+        <!-- Distance Display -->
+        <div class="grid grid-cols-3 gap-4 text-center mb-6">
+            <!-- Front of Green -->
+            <div class="bg-green-100 dark:bg-green-900 rounded-2xl p-4 shadow-inner">
+                <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Front</p>
+                <p id="distance-front" class="text-4xl font-black text-green-700 dark:text-green-300 mt-2">--</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">yards</p>
+            </div>
+            <!-- Center of Green -->
+            <div class="bg-green-100 dark:bg-green-900 rounded-2xl p-4 shadow-inner">
+                <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Center</p>
+                <p id="distance-center" class="text-4xl font-black text-green-700 dark:text-green-300 mt-2">--</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">yards</p>
+            </div>
+            <!-- Back of Green -->
+            <div class="bg-green-100 dark:bg-green-900 rounded-2xl p-4 shadow-inner">
+                <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">Back</p>
+                <p id="distance-back" class="text-4xl font-black text-green-700 dark:text-green-300 mt-2">--</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">yards</p>
+            </div>
+        </div>
+
+        <!-- Hazard Display -->
+        <div id="hazard-display" class="grid grid-cols-2 gap-4 text-center mb-6"></div>
+
+        <!-- Loading and Error Messages -->
+        <p id="message-area" class="text-center text-sm font-medium h-6 text-gray-600 dark:text-gray-400"></p>
+
+        <!-- Navigation and Actions -->
+        <div class="flex items-center justify-between gap-4 mt-6">
+            <button id="prev-hole-btn" class="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-full shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Previous
+            </button>
+            <button id="get-distance-btn" class="flex-1 bg-green-600 dark:bg-green-500 text-white font-bold py-3 px-4 rounded-full shadow-lg hover:bg-green-700 dark:hover:bg-green-400 transition-colors transform hover:scale-105">
+                Refresh
+            </button>
+            <button id="next-hole-btn" class="flex-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-bold py-3 px-4 rounded-full shadow-md hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Next
+            </button>
+        </div>
+
+        <!-- Dark Mode Toggle -->
+        <div class="text-center mt-4">
+            <button id="toggle-theme-btn" class="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-semibold py-2 px-4 rounded-full hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+                Toggle Dark Mode
+            </button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Course data for HadleyCreek with hazards
+            const courseData = {
+                name: "HadleyCreek",
+                holes: [
+                    { hole: 1, par: 3, tee: [44.075384, -92.431759], front: [44.074584, -92.432029], center: [44.074452, -92.432007], back: [44.074334, -92.431968], hazards: [] },
+                    { hole: 2, par: 4, tee: [44.073303, -92.431259], front: [44.074169, -92.434047], center: [44.074227, -92.434211], back: [44.074301, -92.434349], hazards: [
+                        { type: "Right Bunker Front", coords: [44.073791332201665, -92.4325732153536] },
+                        { type: "Right Bunker Rear", coords: [44.073825055014325, -92.43290715036665] },
+                        { type: "Left Bunker Front", coords: [44.073681492048536, -92.43348248419395] },
+                        { type: "Left Bunker Rear", coords: [44.07386070482263, -92.43383653576203] }
+                    ] },
+                    { hole: 3, par: 3, tee: [44.073554, -92.434544], front: [44.072758, -92.433836], center: [44.072678, -92.433714], back: [44.072582, -92.433597], hazards: [
+                        { type: "Bunker Front", coords: [44.07296298584522, -92.43384416400436] },
+                        { type: "Bunker Middle", coords: [44.07285126750542, -92.43374927037439] },
+                        { type: "Bunker Rear", coords: [44.0728455383541, -92.43355549598716] }
+                    ] },
+                    { hole: 4, par: 3, tee: [44.072748, -92.434836], front: [44.073577, -92.435656], center: [44.073693, -92.435775], back: [44.073808, -92.435914], hazards: [] },
+                    { hole: 5, par: 4, tee: [44.074034, -92.439247], front: [44.074087, -92.442439], center: [44.074133, -92.442610], back: [44.074181, -92.442764], hazards: [] },
+                    { hole: 6, par: 3, tee: [44.073704, -92.443746], front: [44.073832, -92.444650], center: [44.073819, -92.444810], back: [44.073841, -92.444974], hazards: [
+                        { type: "Water Right", coords: [44.07385845583365, -92.44452525640412] }
+                    ] },
+                    { hole: 7, par: 4, tee: [44.075151, -92.445116], front: [44.074793, -92.441756], center: [44.074769, -92.441583], back: [44.074780, -92.441421], hazards: [
+                        { type: "Water Carry", coords: [44.074940693489815, -92.44377158818594] },
+                        { type: "Bunker Front", coords: [44.07491591503698, -92.44176348042092] },
+                        { type: "Bunker Rear", coords: [44.0749091706003, -92.44156700862273] }
+                    ] },
+                    { hole: 8, par: 3, tee: [44.074850, -92.439902], front: [44.074910, -92.438149], center: [44.074950, -92.437983], back: [44.074989, -92.437890], hazards: [] },
+                    { hole: 9, par: 4, tee: [44.074869, -92.436735], front: [44.075048, -92.433139], center: [44.075108, -92.433005], back: [44.075154, -92.432855], hazards: [
+                        { type: "Bunker Front", coords: [44.07517764620998, -92.43392076595802] },
+                        { type: "Bunker Middle", coords: [44.075207514288195, -92.43374910459167] },
+                        { type: "Bunker Rear", coords: [44.07522774749392, -92.43358414874744] }
+                    ] }
+                ]
+            };
+
+            let currentHoleIndex = 0;
+            const proximityThreshold = 40; // Distance in yards to trigger next hole
+            let wakeLock = null;
+
+            // Dark Mode Logic
+            const toggleThemeBtn = document.getElementById('toggle-theme-btn');
+            const htmlElement = document.documentElement;
+
+            // Check for saved theme or system preference
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                htmlElement.classList.toggle('dark', savedTheme === 'dark');
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                htmlElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+
+            // Toggle theme on button click
+            toggleThemeBtn.addEventListener('click', () => {
+                htmlElement.classList.toggle('dark');
+                const isDark = htmlElement.classList.contains('dark');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
+                toggleThemeBtn.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+            });
+
+            // Update button text based on initial theme
+            toggleThemeBtn.textContent = htmlElement.classList.contains('dark') ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+
+            // Screen Wake Lock functions
+            async function requestWakeLock() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        document.getElementById('message-area').textContent = 'Screen wake lock activated.';
+                        console.log('Screen wake lock acquired');
+                    } else {
+                        document.getElementById('message-area').textContent = 'Screen wake lock not supported.';
+                        console.warn('Wake Lock API not supported by this browser.');
+                    }
+                } catch (err) {
+                    document.getElementById('message-area').textContent = 'Wake lock error: ' + err.message;
+                    console.error('Wake lock error:', err);
+                }
+            }
+
+            // Release wake lock when page is hidden
+            function handleVisibilityChange() {
+                if (document.visibilityState === 'visible' && !wakeLock) {
+                    requestWakeLock();
+                } else if (wakeLock) {
+                    wakeLock.release().then(() => {
+                        wakeLock = null;
+                        console.log('Screen wake lock released');
+                    });
+                }
+            }
+
+            // Haversine formula to calculate distance between two lat/lon points
+            function haversine(lat1, lon1, lat2, lon2) {
+                const R = 6371; // Earth's radius in km
+                const dLat = (lat2 - lat1) * Math.PI / 180;
+                const dLon = (lon2 - lon1) * Math.PI / 180;
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                          Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                          Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                const distance_km = R * c;
+                return distance_km * 1093.61; // Convert km to yards
+            }
+
+            // Update UI with current hole and course info
+            function updateUI() {
+                const hole = courseData.holes[currentHoleIndex];
+                document.getElementById('course-name').textContent = courseData.name;
+                document.getElementById('hole-info').textContent = `Hole ${hole.hole} | Par ${hole.par}`;
+                
+                // Disable/enable buttons based on hole index
+                const prevBtn = document.getElementById('prev-hole-btn');
+                const nextBtn = document.getElementById('next-hole-btn');
+                prevBtn.classList.toggle('disabled-btn', currentHoleIndex === 0);
+                nextBtn.classList.toggle('disabled-btn', currentHoleIndex === courseData.holes.length - 1);
+
+                // Update hazard display
+                const hazardDisplay = document.getElementById('hazard-display');
+                hazardDisplay.innerHTML = ''; // Clear previous hazards
+                if (hole.hazards && hole.hazards.length > 0) {
+                    hazardDisplay.classList.add('grid-cols-' + Math.min(hole.hazards.length, 2));
+                    hole.hazards.forEach((hazard, index) => {
+                        const bgColor = hazard.type.includes('Bunker') ? 'bg-yellow-100 dark:bg-yellow-900' : 'bg-blue-100 dark:bg-blue-900';
+                        const textColor = hazard.type.includes('Bunker') ? 'text-yellow-700 dark:text-yellow-300' : 'text-blue-700 dark:text-blue-300';
+                        hazardDisplay.innerHTML += `
+                            <div class="${bgColor} rounded-2xl p-4 shadow-inner">
+                                <p class="text-sm font-semibold text-gray-600 dark:text-gray-300">${hazard.type}</p>
+                                <p id="distance-hazard-${index}" class="text-2xl font-black ${textColor} mt-2">--</p>
+                                <p class="text-xs text-gray-400 dark:text-gray-500">yards</p>
+                            </div>
+                        `;
+                    });
+                } else {
+                    hazardDisplay.classList.remove('grid-cols-1', 'grid-cols-2');
+                    hazardDisplay.innerHTML = '<p class="col-span-2 text-center text-sm text-gray-500 dark:text-gray-400">No hazards</p>';
+                }
+            }
+
+            // Calculate and display distances
+            function displayDistances(position) {
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                const currentHole = courseData.holes[currentHoleIndex];
+
+                // Green distances
+                const frontEl = document.getElementById('distance-front');
+                const centerEl = document.getElementById('distance-center');
+                const backEl = document.getElementById('distance-back');
+
+                const distFront = haversine(userLat, userLon, currentHole.front[0], currentHole.front[1]);
+                const distCenter = haversine(userLat, userLon, currentHole.center[0], currentHole.center[1]);
+                const distBack = haversine(userLat, userLon, currentHole.back[0], currentHole.back[1]);
+
+                frontEl.textContent = Math.round(distFront);
+                centerEl.textContent = Math.round(distCenter);
+                backEl.textContent = Math.round(distBack);
+
+                // Hazard distances
+                if (currentHole.hazards && currentHole.hazards.length > 0) {
+                    currentHole.hazards.forEach((hazard, index) => {
+                        const hazardEl = document.getElementById(`distance-hazard-${index}`);
+                        if (hazardEl) {
+                            const distHazard = haversine(userLat, userLon, hazard.coords[0], hazard.coords[1]);
+                            hazardEl.textContent = Math.round(distHazard);
+                        }
+                    });
+                }
+            }
+
+            // Watch user's position and update UI
+            function watchGolfPosition() {
+                const messageArea = document.getElementById('message-area');
+                if ("geolocation" in navigator) {
+                    messageArea.textContent = 'Fetching your location...';
+
+                    navigator.geolocation.watchPosition(
+                        (position) => {
+                            const userLat = position.coords.latitude;
+                            const userLon = position.coords.longitude;
+
+                            // Check for auto-advance to next hole
+                            if (currentHoleIndex < courseData.holes.length - 1) {
+                                const nextHole = courseData.holes[currentHoleIndex + 1];
+                                const distToNextTee = haversine(userLat, userLon, nextHole.tee[0], nextHole.tee[1]);
+                                
+                                if (distToNextTee <= proximityThreshold) {
+                                    currentHoleIndex++;
+                                    updateUI();
+                                    messageArea.textContent = `Moved to Hole ${courseData.holes[currentHoleIndex].hole}!`;
+                                } else {
+                                    displayDistances(position);
+                                    messageArea.textContent = 'Distances updated.';
+                                }
+                            } else {
+                                displayDistances(position);
+                                messageArea.textContent = 'Distances updated.';
+                            }
+                        },
+                        (error) => {
+                            messageArea.textContent = 'Error: ' + error.message;
+                            console.error("Geolocation error:", error);
+                        },
+                        {
+                            enableHighAccuracy: true,
+                            timeout: 10000,
+                            maximumAge: 0
+                        }
+                    );
+                } else {
+                    messageArea.textContent = "Geolocation is not supported by your browser.";
+                }
+            }
+
+            // Event listeners
+            document.getElementById('next-hole-btn').addEventListener('click', () => {
+                if (currentHoleIndex < courseData.holes.length - 1) {
+                    currentHoleIndex++;
+                    updateUI();
+                    document.getElementById('message-area').textContent = 'Moved to next hole.';
+                }
+            });
+
+            document.getElementById('prev-hole-btn').addEventListener('click', () => {
+                if (currentHoleIndex > 0) {
+                    currentHoleIndex--;
+                    updateUI();
+                    document.getElementById('message-area').textContent = 'Moved to previous hole.';
+                }
+            });
+
+            document.getElementById('get-distance-btn').addEventListener('click', () => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        displayDistances(position);
+                        document.getElementById('message-area').textContent = 'Distances refreshed.';
+                        // Re-request wake lock on user interaction
+                        if (!wakeLock) requestWakeLock();
+                    },
+                    (error) => {
+                        document.getElementById('message-area').textContent = 'Error: ' + error.message;
+                        console.error("Geolocation error:", error);
+                    }
+                );
+            });
+
+            // Initialize wake lock and visibility change listener
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            requestWakeLock();
+
+            // Initialize UI and start watching position
+            updateUI();
+            watchGolfPosition();
+        })();
+    </script>
+</body>
+</html>
