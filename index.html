@@ -473,11 +473,7 @@
 
             // The "Next" button now triggers the score entry screen
             document.getElementById('next-hole-btn').addEventListener('click', () => {
-                if (currentHoleIndex === courseData.holes.length - 1) {
-                    showScorecard();
-                } else {
-                    showScoreEntry(courseData.holes[currentHoleIndex].hole);
-                }
+                showScoreEntry(courseData.holes[currentHoleIndex].hole);
             });
 
             document.getElementById('prev-hole-btn').addEventListener('click', () => {
